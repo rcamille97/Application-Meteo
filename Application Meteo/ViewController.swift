@@ -9,6 +9,7 @@
 import UIKit
 import CoreLocation
 
+
 class ViewController: UIViewController, CLLocationManagerDelegate{
 
     var url = "https://api.openweathermap.org/data/2.5/weather?q=Ajaccio&units=metric&appid=b8c0162f208b810fd4c2e82e370a98a4"
@@ -16,6 +17,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     var myCity = "", myWeather = "", myHourOfTheDay : String = ""
     var myTemp : Any? = nil
 
+    //To check current location
     var locationManager: CLLocationManager  = CLLocationManager()
     
     var weather : UIImageView = UIImageView()
@@ -38,13 +40,11 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
 
         super.viewDidLoad()
         
+        self.setData()
+        self.setInterface()
+        
         //Shake gesture recognition
         self.becomeFirstResponder()
-        
-        
-        //Place all the elements on the view
-        self.setInterface()
-
 
     }
     
@@ -58,7 +58,41 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         }
     }
     
-    
+    func networkIsUnavailable(){
+        self.view.backgroundColor = getBackgroundColor()
+        let errorLabel = UILabel()
+        errorLabel.text = "Error Loading data, check your internet connection"
+        errorLabel.textAlignment = .center
+        errorLabel.textColor = .white
+        errorLabel.font = city.font.withSize(50)
+        errorLabel.font = UIFont.boldSystemFont(ofSize: 50)
+        
+        self.view.addSubview(errorLabel)
+        
+        let views = [ "error" : errorLabel ]
+        
+        let padding = 10
+        let metrics = [ "padding" : padding ]
+        
+        var constraints = [NSLayoutConstraint]()
+        
+        let l1 = NSLayoutConstraint.constraints(withVisualFormat: "H:|-[error]-|",
+                                                options: [],
+                                                metrics: metrics,
+                                                views: views)
+        
+        constraints += l1
+        
+        let c1 = NSLayoutConstraint.constraints(withVisualFormat: "H:|-[error]-|",
+                                                options: [],
+                                                metrics: metrics,
+                                                views: views)
+        
+        constraints += c1
+        
+        NSLayoutConstraint.activate(constraints)
+        
+    }
     
     func getDataFromJSON() -> [String:Any]{
         let data:NSData = try! NSData(contentsOf: URL(string: self.url)!)
@@ -88,7 +122,13 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         print(myWeather)
         self.weather.image = UIImage(named: self.myWeather)
         
-        self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : \(Calendar.current.component(.minute , from: Date()))"
+        
+        if Calendar.current.component(.minute , from: Date()) < 10{
+            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : 0\(Calendar.current.component(.minute , from: Date()))"
+        }else{
+            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : \(Calendar.current.component(.minute , from: Date()))"
+        }
+        
         self.hourOfTheDay.text = self.myHourOfTheDay
         
         self.view.backgroundColor = getBackgroundColor()
@@ -149,7 +189,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     }
     
     func setInterface(){
-        self.setData()
         
         //the weather
         self.weather.contentMode = .scaleAspectFit
