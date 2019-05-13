@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreLocation
+import SystemConfiguration
 
 
 class ViewController: UIViewController, CLLocationManagerDelegate{
@@ -29,47 +30,110 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     
     
     override func viewDidLoad() {
-        
-        self.locationManager.requestAlwaysAuthorization()
-        self.locationManager.requestWhenInUseAuthorization()
-        if CLLocationManager.locationServicesEnabled() {
-            locationManager.delegate = self
-            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-            locationManager.startUpdatingLocation()
-        }
-
         super.viewDidLoad()
         
-        self.setData()
-        self.setInterface()
+        //Check internet connection
+        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
+        
+        var flags = SCNetworkReachabilityFlags()
+        SCNetworkReachabilityGetFlags(reachability, &flags)
+        
+        if isNetworkReachable(with: flags) {
+            print("connected to internet")
+            self.locationManager.requestAlwaysAuthorization()
+            self.locationManager.requestWhenInUseAuthorization()
+            self.locateMe()
+            self.setData()
+            self.setInterface()
+            return
+        }else{
+            print("not connected to internet")
+            self.networkIsUnavailable()
+            return
+        }
         
         //Shake gesture recognition
         self.becomeFirstResponder()
 
     }
     
+    func isNetworkReachable(with flags: SCNetworkReachabilityFlags) -> Bool {
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
+        let canConnectAutomatically = flags.contains(.connectionOnDemand) || flags.contains(.connectionOnTraffic)
+        let canConnectWithoutUserInteraction = canConnectAutomatically && !flags.contains(.interventionRequired)
+        
+        return isReachable && (!needsConnection || canConnectWithoutUserInteraction)
+    }
+    
     override func becomeFirstResponder() -> Bool {
         return true
     }
     
+    func locateMe(){
+        if CLLocationManager.locationServicesEnabled() {
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            locationManager.startUpdatingLocation()
+        }
+    }
+    //Handle Shake Gesture
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         if motion == .motionShake {
-            self.setData()
+            //Check internet connection
+            guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
+            
+            var flags = SCNetworkReachabilityFlags()
+            SCNetworkReachabilityGetFlags(reachability, &flags)
+            
+            if isNetworkReachable(with: flags) {
+                self.locateMe()
+                self.removeAllSubView()
+                self.setData()
+                self.setInterface()
+                print("On refresh tout ça!")
+                return
+            }else{
+                self.removeAllSubView()
+                self.networkIsUnavailable()
+                return
+            }
+
+        }
+    }
+
+    func removeAllSubView(){
+        for view in self.view.subviews {
+            view.removeFromSuperview()
         }
     }
     
+    //Set error view
     func networkIsUnavailable(){
         self.view.backgroundColor = getBackgroundColor()
         let errorLabel = UILabel()
-        errorLabel.text = "Error Loading data, check your internet connection"
+        errorLabel.text = "Error, Check your internet connection"
         errorLabel.textAlignment = .center
         errorLabel.textColor = .white
-        errorLabel.font = city.font.withSize(50)
-        errorLabel.font = UIFont.boldSystemFont(ofSize: 50)
+        errorLabel.font = city.font.withSize(20)
+        errorLabel.font = UIFont.boldSystemFont(ofSize: 20)
+        
+        
+        //refresh button
+        let refreshImage = UIImage(named: "Refresh")
+        self.buttonRefresh.setImage(refreshImage, for: [])
+        self.buttonRefresh.addTarget(self, action:#selector(self.onClickRefresh(_:)), for: .touchUpInside)
+        self.buttonRefresh.imageView?.contentMode = .scaleAspectFit
+        
         
         self.view.addSubview(errorLabel)
+        self.view.addSubview(self.buttonRefresh)
         
-        let views = [ "error" : errorLabel ]
+        
+        errorLabel.translatesAutoresizingMaskIntoConstraints = false
+        self.buttonRefresh.translatesAutoresizingMaskIntoConstraints = false
+        
+        let views = [ "error" : errorLabel, "refresh" : self.buttonRefresh ]
         
         let padding = 10
         let metrics = [ "padding" : padding ]
@@ -83,7 +147,14 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         
         constraints += l1
         
-        let c1 = NSLayoutConstraint.constraints(withVisualFormat: "H:|-[error]-|",
+        let l2 = NSLayoutConstraint.constraints(withVisualFormat: "H:|-[refresh(==30)]-|",
+                                                options: [],
+                                                metrics: metrics,
+                                                views: views)
+        
+        constraints += l2
+        
+        let c1 = NSLayoutConstraint.constraints(withVisualFormat: "V:|-[error]-50-[refresh(==30)]-|",
                                                 options: [],
                                                 metrics: metrics,
                                                 views: views)
@@ -142,16 +213,12 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     //Pour gérer la localisation
     func locationManager(_ manager:CLLocationManager, didUpdateLocations
         locations: [CLLocation]) {
-        
         guard let location: CLLocationCoordinate2D = manager.location?.coordinate else { return }
-        
         self.setUrl(location)
-        
         print("user latitude = \(location.latitude)")
         print("user longitude = \(location.longitude)")
-        
-        
     }
+    
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Unable to access your current location")
     }
@@ -184,8 +251,25 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     }
     
     @IBAction func onClickRefresh(_ sender: Any) {
-        self.setData()
-        print("On refresh tout ça!")
+        //Check internet connection
+        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
+        
+        var flags = SCNetworkReachabilityFlags()
+        SCNetworkReachabilityGetFlags(reachability, &flags)
+        
+        if isNetworkReachable(with: flags) {
+            self.locateMe()
+            self.removeAllSubView()
+            self.setData()
+            self.setInterface()
+            print("On refresh tout ça!")
+            return
+        }else{
+            self.removeAllSubView()
+            self.networkIsUnavailable()
+            return
+        }
+        
     }
     
     func setInterface(){
@@ -281,11 +365,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         //Ajout de toutes les contraintes
         NSLayoutConstraint.activate(constraints)
     }
-    
-    
-    
-    
-
-
 }
+
 
