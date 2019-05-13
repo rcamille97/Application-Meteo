@@ -4,6 +4,10 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BONJOUR EN MAJUSCULE</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>BONJOUR EN MAJUSCLUE</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

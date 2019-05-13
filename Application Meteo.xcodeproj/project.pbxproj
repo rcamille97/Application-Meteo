@@ -12,6 +12,7 @@
 		B1639E5022898FA4000A3AEA /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B1639E4E22898FA4000A3AEA /* Main.storyboard */; };
 		B1639E5222898FA8000A3AEA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1639E5122898FA8000A3AEA /* Assets.xcassets */; };
 		B1639E5522898FA8000A3AEA /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B1639E5322898FA8000A3AEA /* LaunchScreen.storyboard */; };
+		B1639E5E2289907F000A3AEA /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1639E5D2289907F000A3AEA /* CoreLocation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		B1639E5122898FA8000A3AEA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1639E5422898FA8000A3AEA /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B1639E5622898FA8000A3AEA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1639E5D2289907F000A3AEA /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,6 +31,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1639E5E2289907F000A3AEA /* CoreLocation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -40,6 +43,7 @@
 			children = (
 				B1639E4922898FA4000A3AEA /* Application Meteo */,
 				B1639E4822898FA4000A3AEA /* Products */,
+				B1639E5C2289907F000A3AEA /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -62,6 +66,14 @@
 				B1639E5622898FA8000A3AEA /* Info.plist */,
 			);
 			path = "Application Meteo";
+			sourceTree = "<group>";
+		};
+		B1639E5C2289907F000A3AEA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B1639E5D2289907F000A3AEA /* CoreLocation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
