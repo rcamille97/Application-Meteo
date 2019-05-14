@@ -13,13 +13,13 @@ import SystemConfiguration
 
 class ViewController: UIViewController, CLLocationManagerDelegate{
 
-    var url = "https://api.openweathermap.org/data/2.5/weather?q=Ajaccio&units=metric&appid=b8c0162f208b810fd4c2e82e370a98a4"
+    var url = ""
     
     var myCity = "", myWeather = "", myHourOfTheDay : String = ""
     var myTemp : Any? = nil
 
     //To check current location
-    var locationManager: CLLocationManager  = CLLocationManager()
+    let locationManager: CLLocationManager  = CLLocationManager()
     
     var weather : UIImageView = UIImageView()
     var refresh : UIImageView = UIImageView()
@@ -27,11 +27,45 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     var city : UILabel = UILabel()
     var temperature : UILabel = UILabel()
     var hourOfTheDay : UILabel = UILabel()
+    var errorLabel : UILabel = UILabel()
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        //Shake gesture recognition
+        self.becomeFirstResponder()
         
+        //Check internet connection
+        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
+        var flags = SCNetworkReachabilityFlags()
+        SCNetworkReachabilityGetFlags(reachability, &flags)
+        
+        
+        self.view.backgroundColor = getBackgroundColor()
+        
+        
+        if self.isNetworkReachable(with: flags) {
+            print("connected to internet")
+            self.checkLocation()
+            self.setInterface()
+            return
+        }else{
+            self.networkIsUnavailable()
+            self.setInterface()
+            print("not connected to internet")
+            return
+        }
+    }
+ 
+    //to get location data
+    func checkLocation(){
+        self.locationManager.delegate = self
+        self.locationManager.requestWhenInUseAuthorization()
+        self.locationManager.startUpdatingLocation()
+    }
+    
+    //to refresh data
+    func myRefresh(){
         //Check internet connection
         guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
         
@@ -39,21 +73,18 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         SCNetworkReachabilityGetFlags(reachability, &flags)
         
         if isNetworkReachable(with: flags) {
-            print("connected to internet")
-            self.locationManager.requestAlwaysAuthorization()
-            self.locationManager.requestWhenInUseAuthorization()
-            self.locateMe()
+            self.removeAllSubView()
+            self.checkLocation()
             self.setData()
             self.setInterface()
+            print("On refresh tout ça!")
             return
         }else{
-            print("not connected to internet")
+            self.removeAllSubView()
             self.networkIsUnavailable()
+            self.setInterface()
             return
         }
-        
-        //Shake gesture recognition
-        self.becomeFirstResponder()
 
     }
     
@@ -70,54 +101,117 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         return true
     }
     
-    func locateMe(){
-        if CLLocationManager.locationServicesEnabled() {
-            locationManager.delegate = self
-            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-            locationManager.startUpdatingLocation()
-        }
-    }
+
     //Handle Shake Gesture
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         if motion == .motionShake {
-            //Check internet connection
-            guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
-            
-            var flags = SCNetworkReachabilityFlags()
-            SCNetworkReachabilityGetFlags(reachability, &flags)
-            
-            if isNetworkReachable(with: flags) {
-                self.locateMe()
-                self.removeAllSubView()
-                self.setData()
-                self.setInterface()
-                print("On refresh tout ça!")
-                return
-            }else{
-                self.removeAllSubView()
-                self.networkIsUnavailable()
-                return
-            }
-
+            myRefresh()
         }
     }
 
+    @IBAction func onClickRefresh(_ sender: Any) {
+        myRefresh()
+    }
+    
     func removeAllSubView(){
         for view in self.view.subviews {
             view.removeFromSuperview()
         }
     }
     
+    
+    func setUrl(_ location: CLLocationCoordinate2D){
+        self.url = "https://api.openweathermap.org/data/2.5/weather?lat=\(location.latitude)&lon=\(location.longitude)&appid=b8c0162f208b810fd4c2e82e370a98a4"
+    }
+    
+    //Pour gérer la localisation
+    func locationManager(_ manager:CLLocationManager, didUpdateLocations
+        locations: [CLLocation]) {
+        guard let location: CLLocationCoordinate2D = manager.location?.coordinate else {
+            return }
+        self.setUrl(location)
+        self.city.text = ""
+        self.setData()
+       
+    }
+    
+    //Permet d'obtenir une couleur de fond en fonction de l'heure
+    func getBackgroundColor() -> UIColor {
+        let hourOfTheDay = Calendar.current.component(.hour, from: Date())
+        if(hourOfTheDay >= 19 && hourOfTheDay <= 23){
+            return UIColor(red: 255/255, green: 153/255, blue: 102/255, alpha: 1.0) //orange
+        }else if(hourOfTheDay >= 15 && hourOfTheDay < 19){
+            return UIColor(red: 230/255, green: 230/255, blue: 0/255, alpha: 1.0) //yellow
+        }else if(hourOfTheDay >= 9 && hourOfTheDay < 15){
+            return UIColor(red: 0/255, green: 204/255, blue: 102/255, alpha: 1.0) //green
+        }else if(hourOfTheDay >= 5 && hourOfTheDay < 9){
+            return UIColor(red: 102/255, green: 153/255, blue: 255/255, alpha: 1.0) //blue
+        }else{
+            return UIColor(red: 153/255, green: 153/255, blue: 153/255, alpha: 1.0) //gray
+        }
+        
+    }
+
+    
+    func getDataFromJSON() -> [String:Any]{
+        if url != "" {
+            let data:NSData = try! NSData(contentsOf: URL(string: self.url)!)
+            var  myJSONParsed : [String:Any] = [:]
+            do {
+                myJSONParsed = try JSONSerialization.jsonObject(with: data
+                    as Data, options: .allowFragments) as! [String:Any]
+            } catch let error as NSError {
+                print(error)
+            }
+            
+            return myJSONParsed
+        }else{
+            return [:]
+        }
+    }
+    
+    func setData(){
+        self.errorLabel.text = ""
+        let myData = self.getDataFromJSON()
+        
+        self.myCity = myData["name"] as? String ?? ""
+        self.city.text = self.myCity
+        
+        let mainData = myData["main"] as? [String:Any]
+        self.myTemp = mainData?["temp"] ?? ""
+        self.temperature.text = "\(self.myTemp ?? "") °"
+        
+        let mainWeather = myData["weather"] as? [[String:Any]]
+        self.myWeather = mainWeather?[0]["main"] as? String ?? ""
+        print(myWeather)
+        self.weather.image = UIImage(named: self.myWeather)
+        
+        
+        if Calendar.current.component(.minute , from: Date()) < 10{
+            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : 0\(Calendar.current.component(.minute , from: Date()))"
+        }else{
+            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : \(Calendar.current.component(.minute , from: Date()))"
+        }
+        
+        self.hourOfTheDay.text = self.myHourOfTheDay
+        
+        self.view.backgroundColor = getBackgroundColor()
+    }
+    
+    
     //Set error view
     func networkIsUnavailable(){
         self.view.backgroundColor = getBackgroundColor()
-        let errorLabel = UILabel()
+        self.city.text = ""
+        self.weather = UIImageView()
+        self.temperature.text = ""
+        
+        //error label
         errorLabel.text = "Error, Check your internet connection"
         errorLabel.textAlignment = .center
         errorLabel.textColor = .white
         errorLabel.font = city.font.withSize(20)
         errorLabel.font = UIFont.boldSystemFont(ofSize: 20)
-        
         
         //refresh button
         let refreshImage = UIImage(named: "Refresh")
@@ -165,115 +259,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
         
     }
     
-    func getDataFromJSON() -> [String:Any]{
-        let data:NSData = try! NSData(contentsOf: URL(string: self.url)!)
-        var  myJSONParsed : [String:Any] = [:]
-        do {
-            myJSONParsed = try JSONSerialization.jsonObject(with: data
-                as Data, options: .allowFragments) as! [String:Any]
-        } catch let error as NSError {
-            print(error)
-        }
-        
-        return myJSONParsed
-    }
-    
-    func setData(){
-        let myData = self.getDataFromJSON()
-        
-        self.myCity = myData["name"] as! String
-        self.city.text = self.myCity
-
-        let mainData = myData["main"] as! [String:Any]
-        self.myTemp = mainData["temp"]!
-        self.temperature.text = "\(self.myTemp ?? "") °"
-        
-        let mainWeather = myData["weather"] as! [[String:Any]]
-        self.myWeather = mainWeather[0]["main"] as! String
-        print(myWeather)
-        self.weather.image = UIImage(named: self.myWeather)
-        
-        
-        if Calendar.current.component(.minute , from: Date()) < 10{
-            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : 0\(Calendar.current.component(.minute , from: Date()))"
-        }else{
-            self.myHourOfTheDay = "\(Calendar.current.component(.hour, from: Date())) : \(Calendar.current.component(.minute , from: Date()))"
-        }
-        
-        self.hourOfTheDay.text = self.myHourOfTheDay
-        
-        self.view.backgroundColor = getBackgroundColor()
-    }
-    
-    
-    func setUrl(_ location: CLLocationCoordinate2D){
-        self.url = "https://api.openweathermap.org/data/2.5/weather?lat=\(location.latitude)&lon=\(location.longitude)&appid=b8c0162f208b810fd4c2e82e370a98a4"
-    }
-    
-    //Pour gérer la localisation
-    func locationManager(_ manager:CLLocationManager, didUpdateLocations
-        locations: [CLLocation]) {
-        guard let location: CLLocationCoordinate2D = manager.location?.coordinate else { return }
-        self.setUrl(location)
-        print("user latitude = \(location.latitude)")
-        print("user longitude = \(location.longitude)")
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Unable to access your current location")
-    }
-    
-    //Permet d'obtenir une couleur de fond en fonction de l'heure
-    func getBackgroundColor() -> UIColor {
-        let hourOfTheDay = Calendar.current.component(.hour, from: Date())
-        print(hourOfTheDay)
-        if hourOfTheDay>=23 && hourOfTheDay<=5{
-            return UIColor(red: 153/255, green: 153/255, blue: 153/255, alpha: 1.0) //gray
-        }else{
-            if hourOfTheDay>5 && hourOfTheDay<9{
-                return UIColor(red: 102/255, green: 153/255, blue: 255/255, alpha: 1.0) //blue
-            }else{
-                if hourOfTheDay>=9 && hourOfTheDay<=15{
-                    return UIColor(red: 0/255, green: 204/255, blue: 102/255, alpha: 1.0) //green
-                }else{
-                    if hourOfTheDay>15 && hourOfTheDay<=19{
-                        return UIColor(red: 230/255, green: 230/255, blue: 0/255, alpha: 1.0) //yellow
-                    }else{
-                        if hourOfTheDay>19 && hourOfTheDay<23{
-                            return UIColor(red: 255/255, green: 153/255, blue: 102/255, alpha: 1.0) //orange
-                        }else{
-                            return UIColor(red: 153/255, green: 153/255, blue: 153/255, alpha: 1.0)
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    @IBAction func onClickRefresh(_ sender: Any) {
-        //Check internet connection
-        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
-        
-        var flags = SCNetworkReachabilityFlags()
-        SCNetworkReachabilityGetFlags(reachability, &flags)
-        
-        if isNetworkReachable(with: flags) {
-            self.locateMe()
-            self.removeAllSubView()
-            self.setData()
-            self.setInterface()
-            print("On refresh tout ça!")
-            return
-        }else{
-            self.removeAllSubView()
-            self.networkIsUnavailable()
-            return
-        }
-        
-    }
-    
     func setInterface(){
-        
         //the weather
         self.weather.contentMode = .scaleAspectFit
         
