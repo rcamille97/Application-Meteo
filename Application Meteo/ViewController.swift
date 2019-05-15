@@ -28,33 +28,27 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     var temperature : UILabel = UILabel()
     var hourOfTheDay : UILabel = UILabel()
     var errorLabel : UILabel = UILabel()
-    
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
+
         //Shake gesture recognition
         self.becomeFirstResponder()
         
-        //Check internet connection
-        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
-        var flags = SCNetworkReachabilityFlags()
-        SCNetworkReachabilityGetFlags(reachability, &flags)
-        
-        
         self.view.backgroundColor = getBackgroundColor()
+        self.city.text = "Unable to check location"
         
         
-        if self.isNetworkReachable(with: flags) {
+        if self.isNetworkReachable() {
             print("connected to internet")
             self.checkLocation()
-            self.setInterface()
-            return
         }else{
             self.networkIsUnavailable()
-            self.setInterface()
             print("not connected to internet")
-            return
         }
+        
+        self.setInterface()
     }
  
     //to get location data
@@ -67,40 +61,47 @@ class ViewController: UIViewController, CLLocationManagerDelegate{
     //to refresh data
     func myRefresh(){
         //Check internet connection
-        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "https://api.openweathermap.org/") else { return }
-        
-        var flags = SCNetworkReachabilityFlags()
-        SCNetworkReachabilityGetFlags(reachability, &flags)
-        
-        if isNetworkReachable(with: flags) {
+        if isNetworkReachable() {
             self.removeAllSubView()
             self.checkLocation()
             self.setData()
-            self.setInterface()
             print("On refresh tout ça!")
-            return
         }else{
             self.removeAllSubView()
             self.networkIsUnavailable()
-            self.setInterface()
-            return
         }
+        self.setInterface()
 
     }
     
-    func isNetworkReachable(with flags: SCNetworkReachabilityFlags) -> Bool {
+    func isNetworkReachable() -> Bool {
+        
+        var zeroAddress = sockaddr_in()
+        zeroAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        zeroAddress.sin_family = sa_family_t(AF_INET)
+        
+        guard let defaultRouteReachability = withUnsafePointer(to: &zeroAddress, {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                SCNetworkReachabilityCreateWithAddress(nil, $0)
+            }
+        }) else {
+            return false
+        }
+        
+        var flags: SCNetworkReachabilityFlags = []
+        if !SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags) {
+            return false
+        }
+        
         let isReachable = flags.contains(.reachable)
         let needsConnection = flags.contains(.connectionRequired)
-        let canConnectAutomatically = flags.contains(.connectionOnDemand) || flags.contains(.connectionOnTraffic)
-        let canConnectWithoutUserInteraction = canConnectAutomatically && !flags.contains(.interventionRequired)
         
-        return isReachable && (!needsConnection || canConnectWithoutUserInteraction)
+        return (isReachable && !needsConnection)
     }
     
     override func becomeFirstResponder() -> Bool {
         return true
     }
-    
 
     //Handle Shake Gesture
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
